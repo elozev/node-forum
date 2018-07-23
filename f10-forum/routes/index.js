@@ -1,14 +1,13 @@
 'use strict'
 var express = require('express');
 var router = express.Router();
+var jwt = require('jsonwebtoken');
 var User = require('../models/user');
+var config = require('../config');
 
-//deeper routes
-var questions = require('./questions');
 var users = require('./users');
 var topics = require('./topics');
 
-router.use('/questions', questions);
 router.use('/users', users);
 router.use('/topics', topics);
 
@@ -17,8 +16,29 @@ router.get('/', (req, res, next) => {
 });
 
 // check for token verification and how to retrieve token the best way
-router.post('/login', (req, res, next) => {
-	res.send('Please log in');
+router.post('/auth', (req, res, next) => {
+	User.findOne({email: req.body.email}, (err, user) => {
+		if(err) return next(err);
+		if(!user){
+			res.json({success: false, message: "Authentication failed. User not found!"});
+		}else if(user){
+			if(user.password != req.body.password){
+				res.json({success: false, message: "Authentication failed. Wrong username or password!"})
+			}else{
+				const payload = {
+					email: user.email,
+					user_id: user.id
+				}
+				var token = jwt.sign(payload, config.secret, {expiresIn: 60*60*60});
+				res.json({
+					success: true,
+					// TODO display valid till date
+					message: 'Token generated!',
+					token: token
+				})
+			}
+		}
+	});
 });
 
 router.post('/register', (req, res, next) => {

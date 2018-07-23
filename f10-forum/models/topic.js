@@ -1,6 +1,6 @@
 'use strict'
 var mongoose = require('mongoose');
-var QuestionSchema = require('./question').QuestionSchema;
+var ArticleSchema = require('./article').ArticleSchema;
 
 var TopicSchema = mongoose.Schema({
 	title: {
@@ -14,7 +14,7 @@ var TopicSchema = mongoose.Schema({
 		required: false,
 		trim: true
 	},
-	questions: [QuestionSchema]
+	articles: [ArticleSchema]
 });
 
 var Topic = mongoose.model('Topic', TopicSchema);
