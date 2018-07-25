@@ -9,6 +9,10 @@ var commentSchema = mongoose.Schema({
 	votes:{
 		type: Number,
 		default: 0
+	},
+	user_id: {
+		type: String,
+		required: true
 	}
 });
 

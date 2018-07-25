@@ -22,21 +22,24 @@ router.post('/auth', (req, res, next) => {
 		if(!user){
 			res.json({success: false, message: "Authentication failed. User not found!"});
 		}else if(user){
-			if(user.password != req.body.password){
-				res.json({success: false, message: "Authentication failed. Wrong username or password!"})
-			}else{
-				const payload = {
-					email: user.email,
-					user_id: user.id
+			User.authenticate(req.body.email, req.body.password, (err, user) => {
+				if(err || !user){
+					var err = new Error('Wrong email or password');
+					err.status = 401;
+					return next(err);
+				} else {
+					const payload = {
+						user_id: user.id
+					}
+					var token = jwt.sign(payload, config.secret, {expiresIn: 60*60*60});
+					res.json({
+						success: true,
+						// TODO display valid till date
+						message: 'Token generated!',
+						token: token
+					});
 				}
-				var token = jwt.sign(payload, config.secret, {expiresIn: 60*60*60});
-				res.json({
-					success: true,
-					// TODO display valid till date
-					message: 'Token generated!',
-					token: token
-				})
-			}
+			});
 		}
 	});
 });

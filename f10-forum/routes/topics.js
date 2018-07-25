@@ -15,6 +15,12 @@ function notFoundError(next){
 	return next(err);
 }
 
+function resourceForbidden(next){
+	const err = new Error('You don\'t have the right permissions to perform this action!');
+	err.status = 403;
+	return next(err);
+}
+
 router.param('tID', (req, res, next, id) => {
 	Topic.findById(id, (err, topic) => {
 		if(err) return next(err);
@@ -49,6 +55,26 @@ router.get('/', (req, res, next) => {
 		});
 });
 
+router.get('/:tID', (req, res, next) => {
+	return res.json(req.topic);
+});
+
+router.get('/:tID/articles', (req, res, next) => { return res.json(req.topic.articles); });
+
+// end points for articles
+router.get('/:tID/articles/:aID', (req, res, next) => {
+	return res.json(req.article);
+});
+
+router.get('/:tID/articles/:aID/comments', (req, res, next) => {
+	return res.json(req.article.comments);
+});
+
+// FOR TESTING PURPOSES
+router.get('/:tID/articles/:aID/comments/:cID/', (req, res, next) => {
+	return res.json(req.comment);
+});
+
 router.use((req, res, next) => {
 	var token = req.headers['x-access-token'] || req.query.token;
 	if(token){
@@ -73,7 +99,7 @@ router.post('/', (req, res, next) => {
 
 		var TopicData = {
 			title: req.body.title,
-			description: req.body.description
+			description: req.body.description,
 		};
 
 		Topic.create(TopicData, (err, topic) =>{
@@ -88,14 +114,16 @@ router.post('/', (req, res, next) => {
 	}
 });
 
-router.get('/:tID', (req, res, next) => {
-	return res.json(req.topic);
-});
-
-router.get('/:tID/articles', (req, res, next) => { return res.json(req.topic.articles); });
-
 router.post('/:tID/articles', (req, res, next) => {
-	req.topic.articles.push(req.body);
+
+	console.log(typeof req.decoded.user_id);
+	var ArticleData = {
+		title: req.body.title,
+		text: req.body.text,
+		user_id: req.decoded.user_id
+	}
+
+	req.topic.articles.push(ArticleData);
 	req.topic.save((err, article) => {
 		if(err) return next(err);
 		res.status(201);
@@ -103,38 +131,40 @@ router.post('/:tID/articles', (req, res, next) => {
 	})
 });
 
-// end points for articles
-router.get('/:tID/articles/:aID', (req, res, next) => {
-	return res.json(req.article);
-});
-
 router.put('/:tID/articles/:aID', (req, res, next) => {
-	req.article.title = req.body.title;
-	req.article.text = req.body.text;
+	if(req.article.user_id === req.decoded.user_id){
+		req.article.title = req.body.title;
+		req.article.text = req.body.text;
 
-	req.topic.save((err) => {
-		if(err) return next(err);
-		return res.json(req.article);
-	});
+		req.topic.save((err) => {
+			if(err) return next(err);
+			return res.json(req.article);
+		});
+	}else{
+		return resourceForbidden(next);
+	}
 });
 
 router.delete('/:tID/articles/:aID', (req, res, next) => {
-	req.article.remove((err) => {
-		req.topic.save((err, topic) => {
-			if(err) return next(err);
-			return res.json(topic);
+	if(req.article.user_id === req.decoded.user_id){
+		req.article.remove((err) => {
+			req.topic.save((err, topic) => {
+				if(err) return next(err);
+				return res.json(topic);
+			});
 		});
-	});
-});
-
-// end points for commentsCast to ObjectId failed for value
-
-router.get('/:tID/articles/:aID/comments', (req, res, next) => {
-	return res.json(req.article.comments);
+	}else {
+		return resourceForbidden(next);
+	}
 });
 
 router.post('/:tID/articles/:aID/comments', (req, res, next) => {
-	req.article.comments.push(req.body);
+	var commentData = {
+		text: req.body.text,
+		user_id: req.decoded.user_id
+	}
+
+	req.article.comments.push(commentData);
 	req.topic.save((err, topic) => {
 		if(err) return next(err);
 		res.status = 201;
@@ -143,37 +173,47 @@ router.post('/:tID/articles/:aID/comments', (req, res, next) => {
 });
 
 router.put('/:tID/articles/:aID/comments/:cID', (req, res, next) => {
-	req.comment.text = req.body.text;
-	req.topic.save((err, topic) => {
-		if(err) return next(err);
-		res.status = 200;
-		return res.json(req.article);
-	});
+	if(req.comment.user_id === req.decoded.user_id){
+		req.comment.text = req.body.text;
+		req.topic.save((err, topic) => {
+			if(err) return next(err);
+			res.status = 200;
+			return res.json(req.article);
+		});
+	} else {
+		return resourceForbidden(next);
+	}
 });
 
 router.delete('/:tID/articles/:aID/comments/:cID', (req, res, next) => {
-	req.comment.remove((err) => {
-		if(err) return next(err);
-		req.topic.save((err, topic) => {
+	if(req.comment.user_id === req.decoded.user_id){
+		req.comment.remove((err) => {
 			if(err) return next(err);
-			return res.json(req.article);
+			req.topic.save((err, topic) => {
+				if(err) return next(err);
+				return res.json(req.article);
+			});
 		});
-	})
+	} else {
+		return resourceForbidden(next);
+	}
 });
 
 router.post('/:tID/articles/:aID/comments/:cID/vote-:dir', (req, res, next) => {
-	if(req.params.dir.search(/^(up|down)$/) === -1) return notFoundError(next);
-	else {
-		var v = req.params.dir;
-		req.comment.vote(v, (err, comment) => {
-			if(err) return next(err);
-			return res.json(comment);
-		});
+	if(req.comment.user_id !== req.decoded.user_id){
+		if(req.params.dir.search(/^(up|down)$/) === -1) return notFoundError(next);
+		else {
+			var v = req.params.dir;
+			req.comment.vote(v, (err, comment) => {
+				if(err) return next(err);
+				return res.json(req.comment);
+			});
+		}
+	} else {
+		var err = new Error('You cannot vote for your own comments!');
+		err.status = 403;
+		return next(err);
 	}
-});
-// FOR TESTING PURPOSES
-router.get('/:tID/articles/:aID/comments/:cID/', (req, res, next) => {
-	return res.json(req.comment);
 });
 
 module.exports = router;
