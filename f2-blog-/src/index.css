@@ -1,0 +1,59 @@
+.thumbnail{
+	position: relative;
+}
+
+.caption {
+	position: absolute;
+	top: 45%;
+	left: 0;
+	width: 100%;
+	opacity: .92;
+}
+
+
+textarea.form-control #write-a-story{
+	height: 300px;
+}
+
+.main-content-area{
+	min-height: 1000px; /* set this property dynamically*/
+}
+
+.featured-image img{
+	width: 100%;
+}
+
+.smoked-effect{
+	display: inline-block;
+	padding: 1.2em;
+	border-radius: 12px;
+	width: 35%;
+}
+
+.smoked-effect hr{
+	border-color: white;
+}
+
+.breadcrumb .breadcrumb-item a{
+	color: #28A745;
+}
+
+.comment-details p.details{
+	display: inline;
+	position: relative;
+}
+
+.up-vote:hover{
+	color: #28A745;
+}
+.down-vote:hover{
+	color: red;
+}
+
+i.fa-envelope{color: white;}
+i.fa-user-alt{color: white;}
+i.fa-lock{color: white;}
+
+.background{
+	min-height: 100%;
+}
